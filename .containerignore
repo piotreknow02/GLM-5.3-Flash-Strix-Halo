@@ -1,0 +1,11 @@
+# Build context exclusions for the Containerfile.
+# The image only needs Containerfile + entrypoint.sh (when present); the ~100 GB
+# checkpoint, caches, logs and VCS data must never be sent to the builder.
+.git
+.gitignore
+.cache
+models
+*.log
+.env
+__pycache__
+*.pyc

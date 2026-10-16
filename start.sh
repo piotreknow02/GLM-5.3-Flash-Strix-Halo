@@ -162,14 +162,21 @@ echo "Spawned container ${CONTAINER_NAME}"
 log_follow_pid=""
 cleanup() {
   if [[ -n "${log_follow_pid}" ]]; then
-    kill "${log_follow_pid}" 2>/dev/null || true
+    # The follower runs in its own process group (setsid below): signal the whole
+    # group so `podman logs -f` dies together with `tee`. Killing only the
+    # pipeline's last pid leaves podman alive, and the `wait` below then blocks
+    # forever right after a successful start.
+    kill -- "-${log_follow_pid}" 2>/dev/null \
+      || kill "${log_follow_pid}" 2>/dev/null || true
     wait "${log_follow_pid}" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
 
 # Stream the engine log to the terminal AND record it in .glm53.log.
-podman logs -f "${CONTAINER_NAME}" 2>&1 | tee -a "${LOG_FILE}" &
+# setsid isolates the `podman logs -f | tee` pipeline in its own process group so
+# cleanup can reap both ends (see above); without it, start.sh never returns.
+setsid bash -c 'podman logs -f "$1" 2>&1 | tee -a "$2"' _ "${CONTAINER_NAME}" "${LOG_FILE}" &
 log_follow_pid=$!
 
 READY_URL="http://127.0.0.1:${PORT}/health"

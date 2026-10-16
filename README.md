@@ -29,7 +29,7 @@ The ~100 GB checkpoint is **not** baked into the image; it is bind-mounted read-
 - **AMD GPU driver** present: `/dev/kfd` and `/dev/dri/renderD128` exist
 - Current user in the **`render`** (and ideally `video`) group — check with `id -nG`
 - **~130 GB free disk**: ~100 GB weights + ~30 GB image + caches
-- **128 GB unified RAM** (the default `-c 131072` leaves ~10 GB free)
+- **≥128 GB unified RAM** — the default `-c 262144` (256K context) uses most of a 128 GB box; see Troubleshooting if the engine can't allocate
 - `curl`, `python3`, and `huggingface-cli` (from `pip install huggingface_hub[cli]`) or `huggingface_hub` Python package on the host for the first-model download
 
 No root/sudo is required for the normal path. Podman runs rootless; GPU access comes from `--group-add keep-groups` (carries your host `render` group into the container) plus SELinux `:z` bind relabeling.
@@ -90,7 +90,7 @@ The `Containerfile` builds a self-contained image:
 3. Kyojin engine git-cloned from GitHub at a pinned commit.
 4. ROCm gfx1151 PyTorch + `rocm-sdk-devel` wheel installed into a uv-managed venv (self-contained, no system ROCm), then `rocm-sdk init` expands the devel headers.
 5. `build.sh` compiles the exllamav3 C++/HIP extension for gfx1151.
-6. At runtime, `env.sh` sets `LD_PRELOAD` (HSA runtime) and `PYTHONPATH`, then `serve.py` serves the model on `0.0.0.0:8000` (host port mapped by `start.sh`) under the HuggingFace repo id, with `-c 131072 --num-draft 2`. `$HOME/.cache` is a symlink to the `/cache` bind-mount so GEMM tuning and kernel caches survive container recreation.
+6. At runtime, `env.sh` sets `LD_PRELOAD` (HSA runtime) and `PYTHONPATH`, then `serve.py` serves the model on `0.0.0.0:8000` (host port mapped by `start.sh`) under the HuggingFace repo id, with `-c 262144 --num-draft 2` (256K context). `$HOME/.cache` is a symlink to the `/cache` bind-mount so GEMM tuning and kernel caches survive container recreation.
 
 The image does **not** contain a system ROCm — the wheels are self-contained and the `_rocm_sdk_devel` package provides both the ROCm headers for compilation and the compatible HSA runtime for execution.
 
@@ -136,7 +136,7 @@ sudo systemctl daemon-reload
 
 **SELinux `Permission denied` on `/models`** — confirm the `:z` suffix on the bind (start.sh sets it). If you relabeled the directory manually, `restorecon -R` it or just re-run `./start.sh`.
 
-**Host OOM under load** — close other apps or reduce the context size by passing a smaller `-c` in the Containerfile's CMD. Default `-c 131072` opens ~10 GiB free on a 128 GB box.
+**Host OOM under load** — close other apps or reduce the context size by passing a smaller `-c` in the Containerfile's CMD. Default `-c 262144` (256K) leaves little free on a 128 GB box.
 
 **`huggingface-cli: command not found`** — install `huggingface_hub` on the host:
 

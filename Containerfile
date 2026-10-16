@@ -19,10 +19,10 @@ ENV PATH=/root/.local/bin:$PATH
 
 # Kyojin engine: pinned revision for gfx1151 + GLM serving.
 ARG KYOJIN_REPO=https://github.com/Yamz-Labs/kyojin.git
-ARG KYOJIN_REVISION=a13d1d8bca42924f32331df76ddceb03c052ab8e
+ARG KYOJIN_REVISION=f852e2a282bc5bacbe74cac0b3c067dfbf68cb74
 # Build parallelism for hipcc / ninja kernel compiles.
 # Overridable via --build-arg; empty default = auto-detect via nproc in RUN below.
-ARG MAX_JOBS=
+ARG MAX_JOBS=32
 
 RUN git clone ${KYOJIN_REPO} /opt/kyojin \
     && cd /opt/kyojin \
@@ -80,4 +80,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30m --retries=3 \
 # --host 0.0.0.0 is load-bearing: serve.py defaults to 127.0.0.1, which refuses
 # connections forwarded from the host publish port. --model-id makes /v1/models
 # report (and /v1/chat/completions accept) the HuggingFace repo id.
-CMD ["bash", "-c", "source /opt/kyojin/tools/strix_halo/env.sh && exec python /opt/kyojin/tools/glm/serve.py --model /models --host 0.0.0.0 --port 8000 --model-id yamz-labs/GLM-5.3-Flash-EXL3-Yamz -c 131072 --num-draft 2"]
+CMD ["bash", "-c", "source /opt/kyojin/tools/strix_halo/env.sh && exec python /opt/kyojin/tools/glm/serve.py --model /models --host 0.0.0.0 --port 8000 --model-id yamz-labs/GLM-5.3-Flash-EXL3-Yamz -c 262144 --num-draft 2"]
